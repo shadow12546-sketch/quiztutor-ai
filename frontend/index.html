@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuizTutor AI — Learn &amp; quiz any topic with Gemini</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231B2430'/%3E%3Ctext x='50' y='68' font-size='58' font-family='Georgia,serif' fill='%23E0983B' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("quiztutor:theme");
+      if (t === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="rail">
+    <div class="rail-brand">
+      <span class="rail-mark">Q</span>
+      <span class="rail-name">QuizTutor AI</span>
+      <button id="theme-toggle" type="button" class="theme-toggle" aria-label="Toggle light/dark theme">🌙 Dark</button>
+    </div>
+
+    <div class="rail-field">
+      <label for="subject-input">Subject</label>
+      <input id="subject-input" type="text" placeholder="e.g. photosynthesis, JavaScript closures, WWII..." autocomplete="off" />
+      <button id="start-lesson-btn" type="button" class="btn-lesson">Start lesson</button>
+      <div id="recent-subjects" class="recent-subjects"></div>
+    </div>
+
+    <div class="rail-field">
+      <label for="language-select">Language</label>
+      <select id="language-select">
+        <option value="English" selected>English</option>
+        <option value="Spanish">Spanish</option>
+        <option value="French">French</option>
+        <option value="German">German</option>
+        <option value="Hindi">Hindi</option>
+        <option value="Portuguese">Portuguese</option>
+        <option value="Japanese">Japanese</option>
+        <option value="Mandarin Chinese">Mandarin Chinese</option>
+        <option value="Arabic">Arabic</option>
+      </select>
+    </div>
+
+    <nav class="rail-modes">
+      <button type="button" class="mode-btn is-active" data-mode="tutor">
+        <span class="mode-index">01</span> Tutor Chat
+      </button>
+      <button type="button" class="mode-btn" data-mode="quiz">
+        <span class="mode-index">02</span> Quiz Me
+      </button>
+      <button type="button" class="mode-btn" data-mode="flashcards">
+        <span class="mode-index">03</span> Flashcards
+      </button>
+      <button type="button" class="mode-btn" data-mode="plan">
+        <span class="mode-index">04</span> Study Plan
+      </button>
+      <button type="button" class="mode-btn" data-mode="progress">
+        <span class="mode-index">05</span> Progress
+      </button>
+    </nav>
+
+    <div class="rail-footer">
+      <p>Powered by Gemini. Ask about any topic, quiz yourself, or build a study plan.</p>
+      <p class="ai-disclaimer">⚠️ AI-generated content can be wrong — verify anything important.</p>
+      <button id="clear-history-btn" type="button" class="link-btn">Clear saved history</button>
+    </div>
+  </aside>
+
+  <!-- Main stage -->
+  <main class="stage">
+
+    <!-- Tutor panel -->
+    <section id="tutor-panel" class="panel is-active">
+      <div class="panel-head">
+        <div class="panel-head-row">
+          <div>
+            <h1>Ask your tutor</h1>
+            <p>Currently teaching <span id="tutor-subject-echo">general knowledge</span>. Type a subject and click <strong>Start lesson</strong> for a guided walkthrough, or just ask a question — answers stream in as they're generated.</p>
+          </div>
+          <div class="panel-head-actions">
+            <button id="export-chat-btn" type="button" class="btn-ghost" title="Download this conversation">⬇ Export</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="chat-log" class="chat-log">
+        <div class="chat-empty">
+          <p>Type a subject in the sidebar and click <strong>Start lesson</strong>, or ask a question below to start the conversation.</p>
+        </div>
+      </div>
+
+      <form id="tutor-form" class="composer">
+        <button id="voice-input-btn" type="button" class="btn-mic" title="Speak your question">🎤</button>
+        <textarea id="tutor-input" rows="1" placeholder="Ask a question... (Enter to send, Shift+Enter for new line)" required></textarea>
+        <button id="tutor-send" type="submit" class="btn-send">Send</button>
+      </form>
+    </section>
+
+    <!-- Quiz panel -->
+    <section id="quiz-panel" class="panel">
+      <div class="panel-head">
+        <h1>Test yourself</h1>
+        <p>Generate a quiz on <span id="quiz-subject-echo">general knowledge</span>. If you've been chatting with the tutor, questions are drawn from what was actually covered in that lesson.</p>
+      </div>
+
+      <form id="quiz-form" class="quiz-config">
+        <div class="config-field">
+          <label for="quiz-difficulty">Difficulty</label>
+          <select id="quiz-difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+          <p id="difficulty-hint" class="difficulty-hint"></p>
+        </div>
+
+        <div class="config-field">
+          <label for="quiz-length">Questions</label>
+          <select id="quiz-length">
+            <option value="5" selected>5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+
+        <div class="config-field">
+          <label for="quiz-type">Format</label>
+          <select id="quiz-type">
+            <option value="multiple_choice" selected>Multiple choice</option>
+            <option value="true_false">True / False</option>
+            <option value="short_answer">Short answer</option>
+          </select>
+        </div>
+
+        <div class="config-field">
+          <button id="quiz-generate-btn" type="submit" class="btn-send">Generate quiz</button>
+        </div>
+      </form>
+
+      <div id="quiz-body">
+        <div class="chat-empty">
+          <p>Set your options above and generate a quiz to begin.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Flashcards panel -->
+    <section id="flashcards-panel" class="panel">
+      <div class="panel-head">
+        <h1>Flashcards</h1>
+        <p>Active-recall flashcards on <span id="flashcards-subject-echo">general knowledge</span>, drawn from your lesson when available.</p>
+      </div>
+
+      <form id="flashcards-form" class="quiz-config">
+        <div class="config-field">
+          <label for="flashcards-count">Cards</label>
+          <select id="flashcards-count">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="15">15</option>
+          </select>
+        </div>
+        <div class="config-field">
+          <button id="flashcards-generate-btn" type="submit" class="btn-send">Generate flashcards</button>
+        </div>
+      </form>
+
+      <div id="flashcards-body">
+        <div class="chat-empty">
+          <p>Click <strong>Generate flashcards</strong> to build a deck for this subject.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Study plan panel -->
+    <section id="plan-panel" class="panel">
+      <div class="panel-head">
+        <h1>Study plan</h1>
+        <p>A day-by-day plan for learning <span id="plan-subject-echo">general knowledge</span>.</p>
+      </div>
+
+      <form id="plan-form" class="quiz-config">
+        <div class="config-field">
+          <label for="plan-days">Days</label>
+          <select id="plan-days">
+            <option value="3">3</option>
+            <option value="7" selected>7</option>
+            <option value="14">14</option>
+            <option value="30">30</option>
+          </select>
+        </div>
+        <div class="config-field">
+          <label for="plan-hours">Hours / day</label>
+          <select id="plan-hours">
+            <option value="0.5">30 min</option>
+            <option value="1" selected>1 hour</option>
+            <option value="2">2 hours</option>
+            <option value="3">3+ hours</option>
+          </select>
+        </div>
+        <div class="config-field">
+          <button id="plan-generate-btn" type="submit" class="btn-send">Generate plan</button>
+        </div>
+      </form>
+
+      <div id="plan-body">
+        <div class="chat-empty">
+          <p>Set your options above and generate a study plan to begin.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progress panel -->
+    <section id="progress-panel" class="panel">
+      <div class="panel-head">
+        <h1>Your progress</h1>
+        <p>Quiz history across every subject you've studied in this browser.</p>
+      </div>
+
+      <div id="progress-body"></div>
+    </section>
+
+  </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
