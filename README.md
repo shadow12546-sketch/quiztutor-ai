@@ -2,7 +2,10 @@
 
 A general-purpose AI tutor + quiz generator. FastAPI backend, streamed Gemini
 responses over Server-Sent Events, vanilla JS/CSS frontend, packaged as a
-single Docker container and deployed to AWS App Runner.
+single Docker container.
+
+**Live demo:** https://quiztutor-ai.onrender.com/
+
 
 ## Features
 
@@ -25,6 +28,15 @@ single Docker container and deployed to AWS App Runner.
 - **Light/dark theme**, **exportable chat transcripts**, **printable quiz
   results**, keyboard shortcuts (Enter to send, number keys to pick quiz
   options), and a per-IP rate limiter protecting your Gemini quota.
+
+## Tech stack
+
+- **Backend:** FastAPI (Python 3.12), Uvicorn, Server-Sent Events for streaming
+- **Frontend:** Vanilla HTML/CSS/JavaScript (no build step)
+- **LLM:** Google Gemini API (`gemini-2.5-flash`)
+- **Containerization:** Docker (single image serves both frontend and backend)
+- **Deployment (demo):** Render (Free tier, Docker runtime)
+- **Deployment (required target):** AWS App Runner via Amazon ECR
 
 ## Project structure
 
@@ -50,8 +62,10 @@ project/
 
 1. Go to https://aistudio.google.com/app/apikey
 2. Sign in with a Google account and click **Create API key**.
-3. Copy the key — the free tier has generous rate limits and needs no
-   credit card, which is why this project uses `gemini-2.5-flash`.
+3. Copy the key. The free tier is rate-limited (20 requests/day for
+   `gemini-2.5-flash` at the time of writing) — sufficient for local
+   testing, but enable billing before relying on it for a live demo with
+   multiple users.
 
 ---
 
@@ -149,7 +163,7 @@ Amazon ECR** → select the `quiztutor-ai:latest` image.
   - `RATE_LIMIT_PER_MINUTE` = `30` (or your preferred cap)
 - **CPU/Memory**: 1 vCPU / 2 GB is plenty for this workload
 
-Or via CLI, using an `apprunner.json` config referencing the image and env vars:
+Or via CLI, using a `RuntimeEnvironmentSecrets` reference for the key:
 
 ```bash
 aws apprunner create-service \
@@ -172,10 +186,11 @@ aws apprunner create-service \
   }'
 ```
 
-(Storing the key in **Secrets Manager** and referencing its ARN, as above,
-is the recommended production pattern — App Runner also accepts a plain
-`RuntimeEnvironmentVariables` entry for the key if you want to keep it
-simpler for a course project.)
+Storing the key in **Secrets Manager** and referencing its ARN, as above, is
+the recommended production pattern. App Runner also accepts a plain
+`RuntimeEnvironmentVariables` entry for the key if you want to keep things
+simpler for a course project — just note this is less secure than Secrets
+Manager and shouldn't be used beyond coursework.
 
 App Runner provisions the service and gives you a public URL like:
 
@@ -183,7 +198,7 @@ App Runner provisions the service and gives you a public URL like:
 https://xxxxxxxxxx.us-east-1.awsapprunner.com
 ```
 
-That URL is your live, HTTPS-secured deployment.
+That URL is your required live, HTTPS-secured AWS deployment.
 
 ### 4.3 Verify
 
